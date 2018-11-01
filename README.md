@@ -59,5 +59,7 @@ SEQUENCE (260 bytes)                            :
 ## Known limitations
 
 1. The `encoding/asn1`package only implements a subset of ASN.1. Not all ASN.1 types are recognized. The list of the ASN.1 types than can be recognized by the `encoding/asn1` package are described in the [Unmarshal function documentation](https://golang.org/pkg/encoding/asn1/#Unmarshal)
-2. To retrieve the name of the ASN.1 object identifier I am using a GET from the [OID Repository Web site](http://oid-info.com/). It's not very efficient, especially for DER file with a lot of objects, and should be optimized.
+2. To retrieve the name of an ASN.1 object identifier, I am using a GET from the [OID Repository Web site](http://oid-info.com/). It's not very efficient, especially for DER file with a lot of objects, and should be optimized &#10132; this is now fixed: `dumpDER.gp` manages a map of object identifiers. It now knows the most often used and their name. When a new objectif identifier is found, its name will be added to the map as to avoid multiple requests to oid-info.com
 3. Some objects use OCTET STRING or BIT STRING as extension for other ASN.1 data, as described [here](https://stackoverflow.com/questions/15299201/asn-1-octet-strings). These extensions are currently not parsed as ASN.1 data and only displayed as hexadecimal bytes.
+
+

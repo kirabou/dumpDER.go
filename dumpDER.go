@@ -1,34 +1,158 @@
 package main
 
 import (
-	// "bytes"
-	// "encoding/base64"
 	"encoding/asn1"
 	"fmt"
 	"golang.org/x/net/html"
-	// "io"
 	"io/ioutil"
 	"log"
-	// "mime"
-	// "mime/multipart"
-	// "mime/quotedprintable"
 	"net/http"
-	// "net/mail"
 	"os"
-	// "reflect"
 	"strings"
 	"time"
 )
 
+type ObjectName struct {
+	Name          string
+	HaveExtension bool
+}
 
+var MapOfObjects = map[string]ObjectName{
+	"2.5.4.11": ObjectName{
+		Name:          "attributeType(4) organizationalUnitName(11)",
+		HaveExtension: false,
+	},
+	"2.16.840.1.101.3.4.1.22": ObjectName{
+		Name:          "aes(1) aes192-CBC(22)",
+		HaveExtension: false,
+	},
+	"2.5.4.3": ObjectName{
+		Name:          "attributeType(4) commonName(3)",
+		HaveExtension: false,
+	},
+	"2.5.29.14": ObjectName{
+		Name:          "certificateExtension(29) subjectKeyIdentifier(14)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.7.1": ObjectName{
+		Name:          "pkcs-7(7) data(1)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.9.1": ObjectName{
+		Name:          "pkcs-9(9) emailAddress(1)",
+		HaveExtension: false,
+	},
+	"2.16.840.1.101.3.4.1.42": ObjectName{
+		Name:          "aes(1) aes256-CBC(42)",
+		HaveExtension: false,
+	},
+	"1.3.14.3.2.7": ObjectName{
+		Name:          "algorithms(2) desCBC(7)",
+		HaveExtension: false,
+	},
+	"2.5.29.35": ObjectName{
+		Name:          "certificateExtension(29) authorityKeyIdentifier(35)",
+		HaveExtension: false,
+	},
+	"2.5.29.17": ObjectName{
+		Name:          "certificateExtension(29) subjectAltName(17)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.9.5": ObjectName{
+		Name:          "pkcs-9(9) signing-time(5)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.1.11": ObjectName{
+		Name:          "pkcs-1(1) sha256WithRSAEncryption(11)",
+		HaveExtension: false,
+	},
+	"2.5.29.32": ObjectName{
+		Name:          "certificateExtension(29) certificatePolicies(32)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.3.2": ObjectName{
+		Name:          "encryptionalgorithm(3) rc2-cbc(2)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.7.2": ObjectName{
+		Name:          "pkcs-7(7) signedData(2)",
+		HaveExtension: false,
+	},
+	"2.5.4.7": ObjectName{
+		Name:          "attributeType(4) localityName(7)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.1.5": ObjectName{
+		Name:          "pkcs-1(1) sha1-with-rsa-signature(5)",
+		HaveExtension: false,
+	},
+	"2.16.840.1.101.3.4.1.2": ObjectName{
+		Name:          "aes(1) aes128-CBC(2)",
+		HaveExtension: false,
+	},
+	"2.5.29.15": ObjectName{
+		Name:          "certificateExtension(29) keyUsage(15)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.1.1": ObjectName{
+		Name:          "pkcs-1(1) rsaEncryption(1)",
+		HaveExtension: false,
+	},
+	"2.5.29.19": ObjectName{
+		Name:          "certificateExtension(29) basicConstraints(19)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.9.3": ObjectName{
+		Name:          "pkcs-9(9) contentType(3)",
+		HaveExtension: false,
+	},
+	"2.16.840.1.101.3.4.2.1": ObjectName{
+		Name:          "hashAlgs(2) sha256(1)",
+		HaveExtension: false,
+	},
+	"2.5.4.8": ObjectName{
+		Name:          "attributeType(4) stateOrProvinceName(8)",
+		HaveExtension: false,
+	},
+	"2.5.29.37": ObjectName{
+		Name:          "certificateExtension(29) extKeyUsage(37)",
+		HaveExtension: false,
+	},
+	"2.5.4.6": ObjectName{
+		Name:          "attributeType(4) countryName(6)",
+		HaveExtension: false,
+	},
+	"2.5.4.10": ObjectName{
+		Name:          "attributeType(4) organizationName(10)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.3.7": ObjectName{
+		Name:          "encryptionalgorithm(3) des-ede3-cbc(7)",
+		HaveExtension: false,
+	},
+	"2.5.29.31": ObjectName{
+		Name:          "certificateExtension(29) cRLDistributionPoints(31)",
+		HaveExtension: false,
+	},
+	"1.3.6.1.5.5.7.1.1": ObjectName{
+		Name:          "pe(1) authorityInfoAccess(1)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.9.4": ObjectName{
+		Name:          "pkcs-9(9) messageDigest(4)",
+		HaveExtension: false,
+	},
+	"1.2.840.113549.1.9.15": ObjectName{
+		Name:          "pkcs-9(9) smimeCapabilities(15)",
+		HaveExtension: false,
+	},
+}
 
-// WidthFieldNameColumn is the width of the left column used to display 
+// WidthFieldNameColumn is the width of the left column used to display
 // data field name. You can change it to any value you like
 var WidthFieldNameColumn int = 48
 
-
-
-// GetHtmlTitle return the title of a DOM tree, or an empty string
+// GetHtmlTitle returns the title of a DOM tree, or an empty string
 func GetHtmlTitle(n *html.Node) string {
 
 	if n.Type == html.ElementNode && n.Data == "title" {
@@ -36,28 +160,37 @@ func GetHtmlTitle(n *html.Node) string {
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-        s := GetHtmlTitle(c)
-        if len(s) > 0 {
-        	return s
-        }
-    }
+		s := GetHtmlTitle(c)
+		if len(s) > 0 {
+			return s
+		}
+	}
 
-    return ""
+	return ""
 }
 
-
-// GetOIName retrieve name of an object identifier from the oid-info.com Web site.
-// Only the last two parts of the are kept to avoid name to be too long and
+// GetOIName retrieves the name of an object identifier from the oid-info.com Web site.
+// Only the last two parts of the full name are kept to avoid names to be too long and
 // difficult to read.
 func GetOIName(oi string) string {
-	
+
+	// Check if we already know this object identifier from our MapOfObjects
+	on, ok := MapOfObjects[oi]
+	if ok {
+		return on.Name
+	} else {
+		MapOfObjects[oi] = ObjectName{}
+	}
+
+	// We don't know this object identifier yet, so we will retrieve it from
+	// oid-info.com and add it to the MapOfObjects
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://oid-info.com/get/%s", oi), nil)
 	if err != nil {
 		log.Println("Cannot build request for oid-info failed -", err)
 		return ""
 	}
 
-	// We need to provide a decent user agent to access oid-info.com
+	// A decent user agent is required to access oid-info.com
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36")
 
 	res, err := http.DefaultClient.Do(req)
@@ -75,25 +208,26 @@ func GetOIName(oi string) string {
 
 	s := GetHtmlTitle(doc)
 
-	// We need to split the title to keep the last 2 parts
+	// We need to split the title to keep the last 2 parts only
 	f := func(c rune) bool {
 		return c == ' ' || c == '{' || c == '}'
 	}
 	split := strings.FieldsFunc(s, f)
-	
+
 	switch l := len(split); l {
 	case 0:
-		return("")
+		return ("")
 	case 1:
-		return fmt.Sprint("%s", split[0])
+		MapOfObjects[oi] = ObjectName{fmt.Sprint("%s", split[0]), false}
+		return MapOfObjects[oi].Name
 	default:
-		return fmt.Sprintf("%s %s", split[l-2], split[l-1])
+		MapOfObjects[oi] = ObjectName{fmt.Sprintf("%s %s", split[l-2], split[l-1]), false}
+		return MapOfObjects[oi].Name
 	}
 
 }
 
-
-// PrintHex dump a byte slide as hexadecimal, with width and left margin
+// PrintHex dumps a byte slice as hexadecimal values, with width and left margin
 // of the dump given as parameters
 func PrintHex(data []byte, prefix string, width int, margin int) {
 
@@ -106,61 +240,74 @@ func PrintHex(data []byte, prefix string, width int, margin int) {
 	var b byte
 	for i, b = range data {
 		switch i % width {
-			case 0:	
-				if i == 0 {
-					fmt.Printf("%02X", b)
-				} else {
-					// fmt.Printf(" %s%02X", strings.Repeat(" ", margin), b)
-					fmt.Printf("%s|%s%02X", prefix, strings.Repeat(" ", margin-len(prefix)), b)
-				}
-			case 1:
+		case 0:
+			if i == 0 {
+				fmt.Printf("%02X", b)
+			} else {
+				// fmt.Printf(" %s%02X", strings.Repeat(" ", margin), b)
+				fmt.Printf("%s|%s%02X", prefix, strings.Repeat(" ", margin-len(prefix)), b)
+			}
+		case 1:
+			fmt.Printf(" %02X", b)
+		case width - 1:
+			if i == len(data)-1 {
 				fmt.Printf(" %02X", b)
-			case width - 1:
-				if i == len(data)-1 {
-					fmt.Printf(" %02X", b)
-				} else {
-					fmt.Printf(" %02X\n", b)
-				}
-			default:
-				fmt.Printf(" %02X", b)
+			} else {
+				fmt.Printf(" %02X\n", b)
+			}
+		default:
+			fmt.Printf(" %02X", b)
 		}
 	}
 
-
 }
 
-
-
-// GetStringFromTag match an ASN1 tag with a name returned as a string
+// GetStringFromTag returns the full name of an ASN.1 type
 func GetStringFromTag(tag int) string {
 
 	switch tag {
-        case asn1.TagBoolean        : return("BOOLEAN")
-        case asn1.TagInteger        : return("INTEGER")
-        case asn1.TagBitString      : return("BIT STRING")
-        case asn1.TagOctetString    : return("OCTET STRING")
-        case asn1.TagNull           : return("NULL")
-        case asn1.TagOID            : return("OBJECT IDENTIFIER")
-        case asn1.TagEnum           : return("ENUM")
-        case asn1.TagUTF8String     : return("UTF8 STRING")
-        case asn1.TagSequence       : return("SEQUENCE")
-        case asn1.TagSet            : return("SET")
-        case asn1.TagNumericString  : return("NUMERIC STRING")
-        case asn1.TagPrintableString: return("PRINTABLE STRING")
-        case asn1.TagT61String      : return("T61String")
-        case asn1.TagIA5String      : return("IA5String")
-        case asn1.TagUTCTime        : return("UTCTime")
-        case asn1.TagGeneralizedTime: return("GeneralizedTime")
-        case asn1.TagGeneralString  : return("GENERAL STRING")
+	case asn1.TagBoolean:
+		return ("BOOLEAN")
+	case asn1.TagInteger:
+		return ("INTEGER")
+	case asn1.TagBitString:
+		return ("BIT STRING")
+	case asn1.TagOctetString:
+		return ("OCTET STRING")
+	case asn1.TagNull:
+		return ("NULL")
+	case asn1.TagOID:
+		return ("OBJECT IDENTIFIER")
+	case asn1.TagEnum:
+		return ("ENUM")
+	case asn1.TagUTF8String:
+		return ("UTF8 STRING")
+	case asn1.TagSequence:
+		return ("SEQUENCE")
+	case asn1.TagSet:
+		return ("SET")
+	case asn1.TagNumericString:
+		return ("NUMERIC STRING")
+	case asn1.TagPrintableString:
+		return ("PRINTABLE STRING")
+	case asn1.TagT61String:
+		return ("T61String")
+	case asn1.TagIA5String:
+		return ("IA5String")
+	case asn1.TagUTCTime:
+		return ("UTCTime")
+	case asn1.TagGeneralizedTime:
+		return ("GeneralizedTime")
+	case asn1.TagGeneralString:
+		return ("GENERAL STRING")
 	}
 
 	return fmt.Sprintf("%d", tag)
 
 }
 
-
-// GetAsnValueAsString convert the raw value of parsed ASN1 data as
-// something more readable depending of the ASN1 tage value of the
+// GetAsnValueAsString converts the raw value of parsed ASN1 data as
+// something more readable depending of the ASN1 type value of the
 // data read
 func GetAsnValueAsString(asn *asn1.RawValue) string {
 
@@ -177,7 +324,7 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 		}
 		s := oi.String()
 		return fmt.Sprintf("%s %s", s, GetOIName(s))
-	case asn1. TagPrintableString, asn1.TagIA5String, asn1.TagNumericString, asn1.TagUTF8String:
+	case asn1.TagPrintableString, asn1.TagIA5String, asn1.TagNumericString, asn1.TagUTF8String:
 		var asn_string string
 		_, err := asn1.Unmarshal(asn.FullBytes, &asn_string)
 		if err != nil {
@@ -200,7 +347,7 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 		if b {
 			return ("true")
 		} else {
-			return("false")
+			return ("false")
 		}
 
 	}
@@ -209,17 +356,13 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 
 }
 
-
-
-// PrintFieldName print the name of an ASN1 data field, making sure to
+// PrintFieldName prints on stdio the name of an ASN1 data field, making sure to
 // stay in the WidthFieldNameColumn defined
 func PrintFieldName(s string) {
 	fmt.Printf("\n%-*.*s: ", WidthFieldNameColumn, WidthFieldNameColumn, s)
 }
 
-
-
-// Parse parse a slice of bytes as ASN1 data. It runs recursively to manage
+// Parse parses a slice of bytes as ASN1 data. It runs recursively to manage
 // nested data enty
 func Parse(data []byte, index int) {
 
@@ -271,11 +414,7 @@ func Parse(data []byte, index int) {
 
 	}
 
-
 }
-
-
-
 
 // dumpDER is a Go program to read a DER file from stdin and display its structure and content
 // in a readable way on stdio. Based on the Golang encoding/asn1 package to parse the DER file
@@ -286,7 +425,7 @@ func main() {
 	// Read DER file from Stdin
 	der, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		log.Fatalln("Erreur lecture stdin -", err)		
+		log.Fatalln("Erreur lecture stdin -", err)
 	}
 
 	fmt.Printf("Note: all INTEGER, OCTET STRING and BIT STRING values displayed as hexadecimal bytes")
@@ -295,7 +434,6 @@ func main() {
 
 	fmt.Println()
 
+	// log.Printf("%#v", MapOfObjects)
+
 }
-
-
-
