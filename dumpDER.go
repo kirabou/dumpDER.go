@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
+	"math/big"
 	"net/http"
 	"os"
 	"strings"
@@ -224,14 +225,15 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 		}
 	
 	case asn1.TagInteger:
-		// Limit ourself to 64 bits integer for now
-		if len(asn.Bytes) <= 8 {
-			var x int
-			_, err := asn1.Unmarshal(asn.FullBytes, &x)
+		if len(asn.Bytes) <= 24 {
+			// We only convert INTEGER when are not too large. INT larger 
+			// than 24 bytes are displayed has hex charts, which are easier to read
+			var t *big.Int
+			_, err := asn1.Unmarshal(asn.FullBytes, &t)
 			if err != nil {
 				log.Fatalln("Erreur unmarshalling -", err)
 			}
-			return fmt.Sprintf("%d", x)
+			return t.String()
 		}
 
 	}
