@@ -35,6 +35,7 @@ func GetHtmlTitle(n *html.Node) string {
 	return ""
 }
 
+
 // GetOIName retrieves the name of an object identifier from the oid-info.com Web site.
 // Only the last two parts of the full name are kept to avoid names to be too long and
 // difficult to read.
@@ -43,10 +44,8 @@ func GetOIName(oi string) string {
 	// Check if we already know this object identifier from our MapOfObjects
 	on, ok := MapOfObjects[oi]
 	if ok {
-		return on.Name
-	} else {
-		MapOfObjects[oi] = ObjectName{}
-	}
+		return on
+	} 
 
 	// We don't know this object identifier yet, so we will retrieve it from
 	// oid-info.com and add it to the MapOfObjects
@@ -84,14 +83,15 @@ func GetOIName(oi string) string {
 	case 0:
 		return ("")
 	case 1:
-		MapOfObjects[oi] = ObjectName{fmt.Sprint("%s", split[0]), false}
-		return MapOfObjects[oi].Name
+		MapOfObjects[oi] = fmt.Sprint("%s", split[0])
+		return MapOfObjects[oi]
 	default:
-		MapOfObjects[oi] = ObjectName{fmt.Sprintf("%s %s", split[l-2], split[l-1]), false}
-		return MapOfObjects[oi].Name
+		MapOfObjects[oi] = fmt.Sprintf("%s %s", split[l-2], split[l-1])
+		return MapOfObjects[oi]
 	}
 
 }
+
 
 // PrintHex dumps a byte slice as hexadecimal values, with width and left margin
 // of the dump given as parameters
@@ -111,7 +111,7 @@ func PrintHex(data []byte, prefix string, width int, margin int) {
 				fmt.Printf("%02X", b)
 			} else {
 				// fmt.Printf(" %s%02X", strings.Repeat(" ", margin), b)
-				fmt.Printf("%s|%s%02X", prefix, strings.Repeat(" ", margin-len(prefix)), b)
+				fmt.Printf("%s|%s: %02X", prefix, strings.Repeat(" ", margin-2-len(prefix)), b)
 			}
 		case 1:
 			fmt.Printf(" %02X", b)
@@ -172,6 +172,7 @@ func GetStringFromTag(tag int) string {
 
 }
 
+
 // GetAsnValueAsString converts the raw value of parsed ASN1 data as
 // something more readable depending of the ASN1 type value of the
 // data read
@@ -182,14 +183,17 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 	}
 
 	switch asn.Tag {
+
 	case asn1.TagOID:
 		var oi asn1.ObjectIdentifier
 		_, err := asn1.Unmarshal(asn.FullBytes, &oi)
 		if err != nil {
-			log.Fatalln("Erreur unmarshalling -", err)
+			// log.Println("Erreur unmarshalling -", err)
+			return ""
 		}
 		s := oi.String()
 		return fmt.Sprintf("%s %s", s, GetOIName(s))
+	
 	case asn1.TagPrintableString, asn1.TagIA5String, asn1.TagNumericString, asn1.TagUTF8String:
 		var asn_string string
 		_, err := asn1.Unmarshal(asn.FullBytes, &asn_string)
@@ -197,6 +201,7 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 			log.Fatalln("Erreur unmarshalling -", err)
 		}
 		return asn_string
+	
 	case asn1.TagUTCTime, asn1.TagGeneralizedTime:
 		var t time.Time
 		_, err := asn1.Unmarshal(asn.FullBytes, &t)
@@ -204,16 +209,29 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 			log.Fatalln("Erreur unmarshalling -", err)
 		}
 		return t.String()
+	
 	case asn1.TagBoolean:
 		var b bool
 		_, err := asn1.Unmarshal(asn.FullBytes, &b)
 		if err != nil {
-			log.Fatalln("Erreur unmarshalling -", err)
+			// log.Println("Erreur unmarshalling -", err)
+			return ""
 		}
 		if b {
 			return ("true")
 		} else {
 			return ("false")
+		}
+	
+	case asn1.TagInteger:
+		// Limit ourself to 64 bits integer for now
+		if len(asn.Bytes) <= 8 {
+			var x int
+			_, err := asn1.Unmarshal(asn.FullBytes, &x)
+			if err != nil {
+				log.Fatalln("Erreur unmarshalling -", err)
+			}
+			return fmt.Sprintf("%d", x)
 		}
 
 	}
@@ -222,11 +240,13 @@ func GetAsnValueAsString(asn *asn1.RawValue) string {
 
 }
 
+
 // PrintFieldName prints on stdio the name of an ASN1 data field, making sure to
 // stay in the WidthFieldNameColumn defined
 func PrintFieldName(s string) {
 	fmt.Printf("\n%-*.*s: ", WidthFieldNameColumn, WidthFieldNameColumn, s)
 }
+
 
 // Parse parses a slice of bytes as ASN1 data. It runs recursively to manage
 // nested data enty
@@ -244,7 +264,7 @@ func Parse(data []byte, index int) {
 		rest, err := asn1.Unmarshal(data2, &asn)
 		if err != nil {
 			log.Printf("Erreur unmarshalling - %v\n", err)
-			log.Printf("\n% X\n", data)
+			log.Printf("\n% X\n", data2)
 			break
 		}
 
@@ -253,14 +273,13 @@ func Parse(data []byte, index int) {
 
 		if asn.IsCompound {
 			Parse(asn.Bytes, index+1)
-		}
-
-		if rest == nil {
-			fmt.Println("-- no more rest")
-			break
-		}
-
-		if !asn.IsCompound {
+		} else if asn.Tag == asn1.TagBitString && len(asn.Bytes) > 2 && asn.Bytes[0] == 0 && asn.Bytes[1] == 0x30 {
+			// A sequence inside a bit string
+			Parse(asn.Bytes[1:], index+1)
+		} else if asn.Tag == asn1.TagOctetString && len(asn.Bytes) > 1 && asn.Bytes[0] == 0x30 {
+			// A sequence inside a octet string
+			Parse(asn.Bytes, index+1)
+		} else {
 			s := GetAsnValueAsString(&asn)
 			if len(s) == 0 {
 				PrintHex(asn.Bytes, fmt.Sprintf("%s", strings.Repeat("| ", index-1)), 16, WidthFieldNameColumn+1)
@@ -282,6 +301,8 @@ func Parse(data []byte, index int) {
 
 }
 
+
+
 // dumpDER is a Go program to read a DER file from stdin and display its structure and content
 // in a readable way on stdio. Based on the Golang encoding/asn1 package to parse the DER file
 func main() {
@@ -293,8 +314,6 @@ func main() {
 	if err != nil {
 		log.Fatalln("Erreur lecture stdin -", err)
 	}
-
-	fmt.Printf("Note: all INTEGER, OCTET STRING and BIT STRING values displayed as hexadecimal bytes")
 
 	Parse(der, 1)
 
