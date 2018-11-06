@@ -176,7 +176,8 @@ func GetStringFromTag(tag int) string {
 
 // GetAsnValueAsString converts the raw value of parsed ASN1 data as
 // something more readable depending of the ASN1 type value of the
-// data read
+// data read. Returns an empty string "" when no conversion of the value as
+// a string was made.
 func GetAsnValueAsString(asn *asn1.RawValue) string {
 
 	if asn == nil {
@@ -283,7 +284,7 @@ func Parse(data []byte, index int) {
 			Parse(asn.Bytes, index+1)
 		} else {
 			s := GetAsnValueAsString(&asn)
-			if len(s) == 0 {
+			if s == "" {
 				PrintHex(asn.Bytes, fmt.Sprintf("%s", strings.Repeat("| ", index-1)), 16, WidthFieldNameColumn+1)
 			} else {
 				fmt.Printf("%s", s)
