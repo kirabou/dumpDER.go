@@ -94,6 +94,15 @@ func GetOIName(oi string) string {
 }
 
 
+// Min returns the smaller of x or y.
+func Min(x, y int) int {
+    if x > y {
+        return y
+    }
+    return x
+}
+
+
 // PrintHex dumps a byte slice as hexadecimal values, with width and left margin
 // of the dump given as parameters
 func PrintHex(data []byte, prefix string, width int, margin int) {
@@ -103,27 +112,12 @@ func PrintHex(data []byte, prefix string, width int, margin int) {
 		return
 	}
 
-	var i int
-	var b byte
-	for i, b = range data {
-		switch i % width {
-		case 0:
-			if i == 0 {
-				fmt.Printf("%02X", b)
-			} else {
-				// fmt.Printf(" %s%02X", strings.Repeat(" ", margin), b)
-				fmt.Printf("%s|%s: %02X", prefix, strings.Repeat(" ", margin-2-len(prefix)), b)
-			}
-		case 1:
-			fmt.Printf(" %02X", b)
-		case width - 1:
-			if i == len(data)-1 {
-				fmt.Printf(" %02X", b)
-			} else {
-				fmt.Printf(" %02X\n", b)
-			}
-		default:
-			fmt.Printf(" %02X", b)
+	for i := 0; i < len(data); i = i+width {
+		limit := Min(len(data), i+width-1)
+		if i == 0 {
+			fmt.Printf("% X", data[i:limit])
+		} else {
+			fmt.Printf("\n%s|%s: % X", prefix, strings.Repeat(" ", margin-2-len(prefix)), data[i:limit])
 		}
 	}
 
