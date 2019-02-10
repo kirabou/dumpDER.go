@@ -1,7 +1,7 @@
 # dumpDER.go - dump a DER file, displaying its structure and content
 
 ## Description
-`dumpDER` is an example of using the `encoding/asn1` package to read and parse a DER file from `stdin`. It will display the DER file structure on `stdio` as well as the data it included, trying to improve the information displayed by converting the most current types (time, string, etc.) in a readable way and retrieving the name of object identifiers from the object identifier repository.
+`dumpDER` is an example of using the `encoding/asn1` package to read and parse a DER file from `stdin`. It will display the DER file structure on `stdout` as well as the data it included, trying to improve the information displayed by converting the most current types (time, string, etc.) in a readable way and retrieving the name of object identifiers from the object identifier repository.
 
 ## Build
 Make sure both files `dumpDER.go` and `object_name.go` are in the same empty directory, and use the `go build` command to build the `dumpDER` executable.
